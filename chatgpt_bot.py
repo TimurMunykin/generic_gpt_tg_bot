@@ -52,6 +52,35 @@ def chatgpt_response(conversation_history):
 
     return response.choices[0].message['content']
 
+
+def chatgpt_response(conversation_history):
+    while True:
+        try:
+            conversation = [
+                {"role": "system", "content": "You are a helpful assistant."},
+            ] + conversation_history
+
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=conversation,
+                max_tokens=2048,
+                n=1,
+                stop=None,
+                temperature=0.8,
+            )
+
+            return response.choices[0].message['content']
+        except openai.error.APIError as e:
+            if e.code == "context_length_exceeded":
+                if len(conversation_history) > 1:
+                    conversation_history.pop(0)  # remove the oldest message
+                else:
+                    return "Sorry, I can't respond to that."
+
+                continue
+            else:
+                raise e
+
 conversations = defaultdict(list)
 
 def is_question(conversation_history):

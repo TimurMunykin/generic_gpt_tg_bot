@@ -36,22 +36,6 @@ def get_chat_logger(chat_id):
 def start_command(update: Update, context: CallbackContext):
     update.message.reply_text("Hello! I'm a helpful assistant. Just mention me or send a message in the chat, and I'll try to help!")
 
-def chatgpt_response(conversation_history):
-    conversation = [
-        {"role": "system", "content": "You are a helpful assistant."},
-    ] + conversation_history
-
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=conversation,
-        max_tokens=2048,
-        n=1,
-        stop=None,
-        temperature=0.8,
-    )
-
-    return response.choices[0].message['content']
-
 
 def chatgpt_response(conversation_history):
     while True:
@@ -72,37 +56,58 @@ def chatgpt_response(conversation_history):
             return response.choices[0].message['content']
         except openai.error.APIError as e:
             if e.code == "context_length_exceeded":
-                if len(conversation_history) > 1:
-                    conversation_history.pop(0)  # remove the oldest message
+                if conversation_history:
+                    removed_messages = []
+                    for i in range(2):
+                        if conversation_history:
+                            removed_message = conversation_history.pop(0)  # remove the oldest message
+                            removed_messages.append(removed_message)
+                    conversation_logger.info(f"Removed {len(removed_messages)} messages from conversation {conversation_history}, reason: API context length exceeded")
+                    continue
                 else:
                     return "Sorry, I can't respond to that."
-
-                continue
             else:
                 raise e
 
 conversations = defaultdict(list)
 
 def is_question(conversation_history):
-    conversation = [
-        {"role": "system", "content": "You are a multilingual assistant that determines if the user's message is a question or not. If it's a question write 'question' if not write 'it's something'."},
-    ] + conversation_history
+    while True:
+        try:
+            conversation = [
+                {"role": "system", "content": "You are a multilingual assistant that determines if the user's message is a question or not. If it's a question write 'question' if not write 'it's something'."},
+            ] + conversation_history
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=conversation,
-        max_tokens=700,
-        n=1,
-        stop=None,
-        temperature=0.5,
-    )
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=conversation,
+                max_tokens=700,
+                n=1,
+                stop=None,
+                temperature=0.5,
+            )
 
-    response_text = response.choices[0].message['content'].lower()
+            response_text = response.choices[0].message['content'].lower()
 
-    if "question" in response_text:
-        return True
-    else:
-        return False
+            if "question" in response_text:
+                return True
+            else:
+                return False
+        except openai.error.APIError as e:
+            if e.code == "context_length_exceeded":
+                if len(conversation_history) > 1:
+                    oldest_messages = conversation_history[:2]
+                    conversation_history = conversation_history[2:]
+
+                    for message in oldest_messages:
+                        logging.warning(f"Overloaded conversation, removing message: {message['content']}")
+
+                else:
+                    return False
+
+                continue
+            else:
+                raise e
 
 
 def text_message_handler(update: Update, context: CallbackContext):

@@ -130,20 +130,17 @@ def mention_handler(update: Update, context: CallbackContext):
 
         update.message.reply_text(f"@{user} {response}")
 
-message_buffers = defaultdict(lambda: deque(maxlen=5))
-
-
 def main():
     updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
     # Register handlers
     start_handler = CommandHandler('start', start_command)
-    # mention_message_handler = MessageHandler(Filters.text & Filters.entity(MessageEntity.MENTION), mention_handler)
+    mention_message_handler = MessageHandler(Filters.text & Filters.entity(MessageEntity.MENTION), mention_handler)
     text_message_handler_obj = MessageHandler(Filters.text & ~Filters.entity(MessageEntity.MENTION), text_message_handler)
 
     dispatcher.add_handler(start_handler)
-    # dispatcher.add_handler(mention_message_handler)
+    dispatcher.add_handler(mention_message_handler)
     dispatcher.add_handler(text_message_handler_obj)
 
     # Start the bot

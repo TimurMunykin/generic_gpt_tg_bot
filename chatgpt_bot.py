@@ -143,7 +143,7 @@ def main():
     text_message_handler_obj = MessageHandler(Filters.text & ~Filters.entity(MessageEntity.MENTION), text_message_handler)
 
     dispatcher.add_handler(start_handler)
-    dispatcher.add_handler(mention_message_handler)
+    # dispatcher.add_handler(mention_message_handler)
     dispatcher.add_handler(text_message_handler_obj)
 
     # Start the bot

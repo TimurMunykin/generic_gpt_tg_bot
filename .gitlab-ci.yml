@@ -11,4 +11,4 @@ deploy:
     - python3 -m pip install -r requirements.txt
     - rsync -avz --delete --exclude '.git*' --exclude 'venv*' . $PROJECT_DIR
     - pgrep -f "chatgpt_bot.py" > /dev/null && pkill -f "chatgpt_bot.py"
-    - cd $PROJECT_DIR && nohup python3 chatgpt_bot.py > chatgpt_bot.log 2>&1 & disown
+    - cd $PROJECT_DIR && ./start_bot.sh

@@ -54,6 +54,55 @@ def chatgpt_response(conversation_history):
 
 conversations = defaultdict(list)
 
+def is_question(conversation_history):
+    conversation = [
+        {"role": "system", "content": "You are an assistant that determines if the user's message is a question or not."},
+    ] + conversation_history
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=conversation,
+        max_tokens=50,
+        n=1,
+        stop=None,
+        temperature=0.8,
+    )
+
+    response_text = response.choices[0].message['content'].lower()
+    if "question" in response_text or "ask" in response_text or "inquiry" in response_text:
+        return True
+    else:
+        return False
+
+def text_message_handler(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    message = update.effective_message.text
+    user = update.effective_user.username
+
+    chat_logger = get_chat_logger(chat_id)
+    chat_logger.info(f"Received message from @{user} in chat_id: {chat_id}")
+
+    # Add the user's message to the conversation history
+    conversation = [{"role": "user", "content": message}]
+
+    # Check if the message is a question
+    if is_question(conversation):
+        # Add the user's question to the conversation history
+        conversations[chat_id].append({"role": "user", "content": message})
+
+        response = chatgpt_response(conversations[chat_id])
+
+        # Add the bot's response to the conversation history
+        conversations[chat_id].append({"role": "assistant", "content": response})
+
+        # Log the conversation
+        chat_logger.info(f"User: @{user} | Message: {message} | Response: {response}")
+
+        update.message.reply_text(f"@{user} {response}")
+    else:
+        # If it's not a question, you can either ignore it or process it differently
+        pass
+
 def mention_handler(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     message = update.effective_message.text
@@ -80,30 +129,6 @@ def mention_handler(update: Update, context: CallbackContext):
         update.message.reply_text(f"@{user} {response}")
 
 message_buffers = defaultdict(lambda: deque(maxlen=5))
-
-def text_message_handler(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    message = update.effective_message.text
-    user = update.effective_user.username
-
-    chat_logger = get_chat_logger(chat_id)
-    chat_logger.info(f"Received message from @{user} in chat_id: {chat_id}")
-
-    # Add the message to the buffer
-    message_buffers[chat_id].append({"role": "user", "content": message})
-
-    # If the buffer is full, generate a response based on the buffered messages
-    if len(message_buffers[chat_id]) == 5:
-        conversation = list(message_buffers[chat_id])
-
-        # Log the conversation buffer
-        chat_logger.info(f"Conversation buffer: {conversation}")
-
-        response = chatgpt_response(conversation)
-        update.message.reply_text(response)
-
-        # Clear the buffer after generating a response
-        message_buffers[chat_id].clear()
 
 
 def main():

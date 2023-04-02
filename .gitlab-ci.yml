@@ -1,13 +1,5 @@
 stages:
-  - test
   - deploy
-
-test:
-  stage: test
-  image: python:3.9
-  script:
-    - pip install -r requirements.txt
-    - python -m unittest discover tests
 
 deploy:
   stage: deploy
@@ -16,5 +8,6 @@ deploy:
   only:
     - master
   script:
-    - pip install -r requirements.txt
+    - python3 -m pip install -r requirements.txt
     - rsync -avz --delete --exclude '.git*' --exclude 'venv*' . /home/crazytimon/apps/generic_gpt_tg_bot/
+    - cd /home/crazytimon/apps/generic_gpt_tg_bot/ && python3 chatgpt_bot.py

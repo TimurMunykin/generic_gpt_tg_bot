@@ -1,7 +1,8 @@
 import os
 import openai
 import logging
-from telegram import Update
+from telegram import Update, MessageEntity
+from collections import deque
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 from collections import defaultdict
 
@@ -32,6 +33,9 @@ def get_chat_logger(chat_id):
 
     return chat_logger
 
+def start_command(update: Update, context: CallbackContext):
+    update.message.reply_text("Hello! I'm a helpful assistant. Just mention me or send a message in the chat, and I'll try to help!")
+
 def chatgpt_response(conversation_history):
     conversation = [
         {"role": "system", "content": "You are a helpful assistant."},
@@ -47,7 +51,6 @@ def chatgpt_response(conversation_history):
     )
 
     return response.choices[0].message['content']
-
 
 conversations = defaultdict(list)
 
@@ -76,17 +79,50 @@ def mention_handler(update: Update, context: CallbackContext):
 
         update.message.reply_text(f"@{user} {response}")
 
+message_buffers = defaultdict(lambda: deque(maxlen=5))
+
+def text_message_handler(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    message = update.effective_message.text
+    user = update.effective_user.username
+
+    chat_logger = get_chat_logger(chat_id)
+    chat_logger.info(f"Received message from @{user} in chat_id: {chat_id}")
+
+    # Add the message to the buffer
+    message_buffers[chat_id].append({"role": "user", "content": message})
+
+    # If the buffer is full, generate a response based on the buffered messages
+    if len(message_buffers[chat_id]) == 5:
+        conversation = list(message_buffers[chat_id])
+
+        # Log the conversation buffer
+        chat_logger.info(f"Conversation buffer: {conversation}")
+
+        response = chatgpt_response(conversation)
+        update.message.reply_text(response)
+
+        # Clear the buffer after generating a response
+        message_buffers[chat_id].clear()
+
+
 def main():
-    updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
+    updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
+    dispatcher = updater.dispatcher
 
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, mention_handler))
+    # Register handlers
+    start_handler = CommandHandler('start', start_command)
+    mention_message_handler = MessageHandler(Filters.text & Filters.entity(MessageEntity.MENTION), mention_handler)
+    text_message_handler_obj = MessageHandler(Filters.text & ~Filters.entity(MessageEntity.MENTION), text_message_handler)
 
-    logger = logging.getLogger(__name__)
-    logger.info("Bot started successfully")
+    dispatcher.add_handler(start_handler)
+    dispatcher.add_handler(mention_message_handler)
+    dispatcher.add_handler(text_message_handler_obj)
 
+    # Start the bot
     updater.start_polling()
     updater.idle()
+
 
 if __name__ == "__main__":
     main()

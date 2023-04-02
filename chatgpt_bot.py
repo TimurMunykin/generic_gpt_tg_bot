@@ -56,24 +56,21 @@ conversations = defaultdict(list)
 
 def is_question(conversation_history):
     conversation = [
-        {"role": "system", "content": "You are a multilingual assistant that determines if the user's message is a question or not."},
+        {"role": "system", "content": "You are a multilingual assistant that determines if the user's message is a question or not. If it's a question write 'question' if not write 'it's something'."},
     ] + conversation_history
 
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=conversation,
-        max_tokens=600,
+        max_tokens=700,
         n=1,
         stop=None,
-        temperature=0.8,
+        temperature=0.5,
     )
 
     response_text = response.choices[0].message['content'].lower()
 
-    english_keywords = ["question", "ask", "inquiry"]
-    russian_keywords = ["вопрос", "спрашивает", "запрос"]
-
-    if any(keyword in response_text for keyword in english_keywords + russian_keywords):
+    if "question" in response_text:
         return True
     else:
         return False
@@ -142,7 +139,7 @@ def main():
 
     # Register handlers
     start_handler = CommandHandler('start', start_command)
-    mention_message_handler = MessageHandler(Filters.text & Filters.entity(MessageEntity.MENTION), mention_handler)
+    # mention_message_handler = MessageHandler(Filters.text & Filters.entity(MessageEntity.MENTION), mention_handler)
     text_message_handler_obj = MessageHandler(Filters.text & ~Filters.entity(MessageEntity.MENTION), text_message_handler)
 
     dispatcher.add_handler(start_handler)

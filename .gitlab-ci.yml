@@ -3,11 +3,7 @@ stages:
 
 deploy:
   stage: deploy
-  tags:
-    - your_runner_tag
+  script:
+    - bash update_and_restart.sh
   only:
     - master
-  script:
-    - python3 -m pip install -r requirements.txt
-    - rsync -avz --delete --exclude '.git*' --exclude 'venv*' . /home/crazytimon/apps/generic_gpt_tg_bot/
-    - cd /home/crazytimon/apps/generic_gpt_tg_bot/ && nohup python3 chatgpt_bot.py > chatgpt_bot.log 2>&1 &

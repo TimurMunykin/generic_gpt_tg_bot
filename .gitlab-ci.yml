@@ -17,4 +17,4 @@ deploy:
     - master
   script:
     - pip install -r requirements.txt
-    - rsync -avz --delete --exclude '.git*' --exclude 'venv*' . /home/crazytimon/apps/generic_gpt_tg_bot/chatgpt_bot.py
+    - rsync -avz --delete --exclude '.git*' --exclude 'venv*' . /home/crazytimon/apps/generic_gpt_tg_bot/
